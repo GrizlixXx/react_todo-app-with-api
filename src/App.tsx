@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { UserWarning } from './UserWarning';
 import {
   addTodo,
@@ -77,7 +77,7 @@ export const App: React.FC = () => {
     setSelectedFilter(value);
   };
 
-  const visibleTodos = React.useMemo(() => {
+  const visibleTodos = useMemo(() => {
     switch (selectedFilter) {
       case 'active':
         return todos.filter(todo => !todo.completed);
