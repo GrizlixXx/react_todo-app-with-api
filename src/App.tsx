@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { UserWarning } from './UserWarning';
 import {
   addTodo,
@@ -21,19 +21,17 @@ import ErrorNotification from './components/ErrorNotification';
 import './styles/index.scss';
 
 export const App: React.FC = () => {
-  const [todos, setTodos] = React.useState<Todo[]>([]);
-  const [title, setTitle] = React.useState('');
-  const [selectedFilter, setSelectedFilter] = React.useState<FilterType>('all');
-  const [errorMessage, setErrorMessage] = React.useState('');
-  const [isErrorVisible, setIsErrorVisible] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [tempTodo, setTempTodo] = React.useState<Todo | null>(null);
-  const [deletingTodoId, setDeletingTodoId] = React.useState<number | null>(
-    null,
-  );
-  const [updatingTodoIds, setUpdatingTodoIds] = React.useState<number[]>([]);
-  const [isLoadingTodos, setIsLoadingTodos] = React.useState(true);
-  const newTodoInputRef = React.useRef<HTMLInputElement>(null);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [title, setTitle] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isErrorVisible, setIsErrorVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tempTodo, setTempTodo] = useState<Todo | null>(null);
+  const [deletingTodoIds, setDeletingTodoIds] = useState<number[]>([]);
+  const [updatingTodoIds, setUpdatingTodoIds] = useState<number[]>([]);
+  const [isLoadingTodos, setIsLoadingTodos] = useState(true);
+  const newTodoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!USER_ID) {
@@ -131,9 +129,13 @@ export const App: React.FC = () => {
   };
 
   const handleDelete = (todoId: number) => {
+    if (deletingTodoIds.includes(todoId)) {
+      return;
+    }
+
     setErrorMessage('');
     setIsErrorVisible(false);
-    setDeletingTodoId(todoId);
+    setDeletingTodoIds(prevIds => [...prevIds, todoId]);
 
     deleteTodo(todoId)
       .then(() => {
@@ -145,7 +147,9 @@ export const App: React.FC = () => {
         setIsErrorVisible(true);
       })
       .finally(() => {
-        setDeletingTodoId(null);
+        setDeletingTodoIds(prevIds =>
+          prevIds.filter(currentId => currentId !== todoId),
+        );
         newTodoInputRef.current?.focus();
       });
   };
@@ -154,24 +158,35 @@ export const App: React.FC = () => {
     setErrorMessage('');
     setIsErrorVisible(false);
 
-    todos
+    const completedTodoIds = todos
       .filter(todo => todo.completed)
-      .forEach(todo => {
-        deleteTodo(todo.id)
-          .then(() => {
-            setTodos(prevTodos =>
-              prevTodos.filter(currentTodo => currentTodo.id !== todo.id),
-            );
-          })
-          .catch(error => {
-            console.error(`Error deleting todo ${todo.id}:`, error);
-            setErrorMessage('Unable to delete a todo');
-            setIsErrorVisible(true);
-          })
-          .finally(() => {
-            newTodoInputRef.current?.focus();
-          });
-      });
+      .map(todo => todo.id)
+      .filter(todoId => !deletingTodoIds.includes(todoId));
+
+    setDeletingTodoIds(prevIds => [
+      ...prevIds,
+      ...completedTodoIds.filter(todoId => !prevIds.includes(todoId)),
+    ]);
+
+    completedTodoIds.forEach(todoId => {
+      deleteTodo(todoId)
+        .then(() => {
+          setTodos(prevTodos =>
+            prevTodos.filter(currentTodo => currentTodo.id !== todoId),
+          );
+        })
+        .catch(error => {
+          console.error(`Error deleting todo ${todoId}:`, error);
+          setErrorMessage('Unable to delete a todo');
+          setIsErrorVisible(true);
+        })
+        .finally(() => {
+          setDeletingTodoIds(prevIds =>
+            prevIds.filter(currentId => currentId !== todoId),
+          );
+          newTodoInputRef.current?.focus();
+        });
+    });
   };
 
   const handleToggle = (todoId: number) => {
@@ -317,7 +332,7 @@ export const App: React.FC = () => {
             onDelete={handleDelete}
             handleToggle={handleToggle}
             onUpdate={handleUpdate}
-            deletingTodoId={deletingTodoId}
+            deletingTodoIds={deletingTodoIds}
             updatingTodoIds={updatingTodoIds}
           />
         )}

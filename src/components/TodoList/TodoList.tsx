@@ -9,7 +9,7 @@ interface Props {
   onDelete: (todoId: number) => void;
   handleToggle: (todoId: number) => void;
   onUpdate: (todoId: number, title: string) => Promise<void>;
-  deletingTodoId: number | null;
+  deletingTodoIds: number[];
   updatingTodoIds: number[];
 }
 
@@ -18,7 +18,7 @@ export const TodoList: React.FC<Props> = ({
   onDelete,
   handleToggle,
   onUpdate,
-  deletingTodoId,
+  deletingTodoIds,
   updatingTodoIds,
 }) => {
   return (
@@ -28,7 +28,8 @@ export const TodoList: React.FC<Props> = ({
           key={todo.id}
           todo={todo}
           isLoading={
-            todo.id === deletingTodoId || updatingTodoIds.includes(todo.id)
+            deletingTodoIds.includes(todo.id) ||
+            updatingTodoIds.includes(todo.id)
           }
           onDelete={onDelete}
           toggleTodo={handleToggle}
